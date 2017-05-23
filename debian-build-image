@@ -163,7 +163,7 @@ check_runtime_requirements()
 	[[ -n $(type -t lsb_release) ]] || fatal "${W}lsb_release{$Z} is expected to be installed. That is normally the case on Debian and Ubuntu anyway."
 	OS_REL=$(lsb_release -sr|cut -d . -f 1)
 	# All those packages are required according to the asuswrt-merlin docs (exceptions: I replaced g++ and make by build-essential, libncurses-dev => libncurses5-dev)
-	PREREQ_PKGS=(autoconf automake bash bison build-essential bzip2 diffutils file flex gawk gcc-multilib gettext gperf groff-base libncurses5-dev libexpat1-dev libslang2 libssl-dev libtool libxml-parser-perl patch perl pkg-config python sed shtool tar texinfo unzip zlib1g zlib1g-dev)
+	PREREQ_PKGS=(autoconf automake autopoint bash bison build-essential bzip2 diffutils file flex gawk gcc-multilib gettext gperf groff-base intltool libltdl-dev libncurses5-dev libexpat1-dev libslang2 libssl-dev libtool libxml-parser-perl patch perl pkg-config python sed shtool tar texinfo unzip zlib1g zlib1g-dev)
 	# Figure out the Debian flavor
 	case $(lsb_release -si) in
 		Debian)
@@ -172,13 +172,13 @@ check_runtime_requirements()
 		LinuxMint)
 			echo -e "${Y}WARNING:${Z} this script should for all practical purposes run on Linux Mint >= 13 (maya), but it's possible that it doesn't. ${REPORT_BACK}."
 			((OS_REL < 13)) && check_or_fail_os_prereq
-			((OS_REL >= 16)) && { PREREQ_PKGS+=(automake1.11 autopoint intltool libproxy-dev); UBUNTU_EXTRAS=1; }
+			((OS_REL >= 16)) && { PREREQ_PKGS+=(automake1.11 libproxy-dev); UBUNTU_EXTRAS=1; }
 			;;
 		Ubuntu)
 			((OS_REL < 12)) && check_or_fail_os_prereq
 			local UBUREL=0x$(lsb_release -sr|tr -d '.')
 			# On Ubuntu 13.10 and later we check for two additional packages
-			((UBUREL >= 0x1310)) && { PREREQ_PKGS+=(automake1.11 autopoint intltool libproxy-dev); UBUNTU_EXTRAS=1; }
+			((UBUREL >= 0x1310)) && { PREREQ_PKGS+=(automake1.11 libproxy-dev); UBUNTU_EXTRAS=1; }
 			;;
 		*)
 			echo -e "${Y}WARNING:${Z} this is an ${W}unsupported Debian flavor${Z}. It is possible, even likely, that this will fail. ${REPORT_BACK}."
@@ -206,7 +206,7 @@ tell_missing_packages()
 		fi
 	fi
 	# Find the packages which are already installed, so we can remove them from the list of required packages
-	local INST_ALREADY=($($APTI -s ${PREREQ_PKGS[*]}|awk '/is already the newest version\.$/ {print $1}'))
+	local INST_ALREADY=($($APTI -s ${PREREQ_PKGS[*]}|awk '/is already the newest version/ {print $1}'))
 	PREREQ_MISSING=($(for pkg in $(echo ""|awk -f <(cat - <<-'EOF'
 		# Embedded awk script
 		BEGIN {
@@ -311,11 +311,15 @@ if [[ -n "$UBUNTU_EXTRAS" ]]; then
 	echo -e "${Y}NOTE:${Z} Attempting extra fixes for Ubuntu >= 13.10 and similar"
 	# fix neon missing proxy.h
 	[[ -f "/usr/include/proxy.h" ]] || fatal "expected to find proxy.h from package libproxy-dev in /usr/include. It's not there, though."
-	cp /usr/include/proxy.h "$BASEDIR/release/src/router/neon/" || fatal "failed to copy proxy.h into source tree" 
+	cp /usr/include/proxy.h "$BASEDIR/release/src/router/neon/" || fatal "failed to copy proxy.h into source tree"
 	# fix broken configure script for libdaemon
 	( cd "$BASEDIR/release/src/router/libdaemon" && aclocal ) || fatal "failed to fix broken configure script for libdaemon"
 	# fix broken configure script for libxml2
 	( cd "$BASEDIR/release/src/router/libxml2" && sed -i.BAK-build-image s/^AM_C_PROTOTYPES/#AM_C_PROTOTYPES/g configure.in && aclocal ) || fatal "failed to fix broken configure script for libxml2"
+    # fix broken configure script for iptables-1.4.x
+    ( cd "$BASEDIR/release/src/router/iptables-1.4.x" && autoreconf -ivf ) || fatal "failed to fix broken configure script for iptables-1.4.x"
+    # fix broken configure script for tor
+    ( cd "$BASEDIR/release/src/router/tor" && aclocal && autoreconf -ivf ) || fatal "failed to fix broken configure script for tor"
 	function_exists hook_ubuntu_extras && hook_ubuntu_extras
 fi
 # Clean up leftovers
