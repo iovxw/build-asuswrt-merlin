@@ -319,7 +319,7 @@ if [[ -n "$UBUNTU_EXTRAS" ]]; then
     # fix broken configure script for iptables-1.4.x
     ( cd "$BASEDIR/release/src/router/iptables-1.4.x" && autoreconf -ivf ) || fatal "failed to fix broken configure script for iptables-1.4.x"
     # fix broken configure script for tor
-    ( cd "$BASEDIR/release/src/router/tor" && aclocal && autoreconf -ivf ) || fatal "failed to fix broken configure script for tor"
+    ( cd "$BASEDIR/release/src/router/tor" && autoreconf -ivf ) || fatal "failed to fix broken configure script for tor"
     # fix broken configure script for openssl
     ( cd "$BASEDIR/release/src/router/openssl" && ./config ) || fatal "failed to fix broken configure script for openssl"
 	function_exists hook_ubuntu_extras && hook_ubuntu_extras
